@@ -28,23 +28,32 @@ jobs:
             curl -L -o "synced_files/$file" "https://raw.githubusercontent.com/marko-lisica/app-library-example/refs/heads/main/apps/$file"
           done
 
-      - name: Compare and Create PR
-        id: create_pr
+      - name: Compare and Commit Changes
         run: |
           # Check for changes
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
+
+          # Create a new branch for changes
+          BRANCH_NAME="sync-branch-$(date +'%Y%m%d%H%M%S')"
+          git checkout -b $BRANCH_NAME
           
-          # Check for differences
-          git diff --quiet synced_files || {
-            git add synced_files/*
-            git commit -m "Sync files from repo B"
-            git push origin HEAD:sync-branch || echo "No changes to push"
+          # Copy files to the repo's working directory
+          cp -r synced_files/* .
+
+          # Check for differences and commit if there are changes
+          git diff --quiet || {
+            git add .
+            git commit -m "Sync files from Repo B"
+            git push origin $BRANCH_NAME
           }
 
+      - name: Create Pull Request
+        id: create_pr
+        run: |
           # Create a pull request if there are changes
-          if [[ $(git rev-parse --abbrev-ref HEAD) == "sync-branch" ]]; then
-            gh pr create --base main --head sync-branch --title "Sync files from Repo B" --body "Automated sync of files from Repo B."
+          if [[ $(git rev-parse --abbrev-ref HEAD) == $BRANCH_NAME ]]; then
+            gh pr create --base main --head $BRANCH_NAME --title "Sync files from Repo B" --body "Automated sync of files from Repo B."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
