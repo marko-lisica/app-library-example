@@ -1,0 +1,50 @@
+on:
+  schedule:
+    - cron: '0 */12 * * *' # Runs every 12 hours
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v2
+
+      - name: Get list of apps to fetch from Fleet
+        id: load_config
+        run: |
+          echo "files=$(cat sync-config.yml | grep -oP '(?<=- ).*')" >> $GITHUB_ENV
+
+      - name: Sync apps
+        run: |
+          # Create a temporary directory to store synced files
+          mkdir -p synced_files
+
+          # Loop through each file in the sync config
+          IFS=$'\n' # Set the internal field separator to newline
+          for file in $files; do
+            # Fetch the file from repo B
+            curl -L -o "synced_files/$file" "https://raw.githubusercontent.com/marko-lisica/app-library-example/refs/heads/main/apps/$file"
+          done
+
+      - name: Compare and Create PR
+        id: create_pr
+        run: |
+          # Check for changes
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # Check for differences
+          git diff --quiet synced_files || {
+            git add synced_files/*
+            git commit -m "Sync files from repo B"
+            git push origin HEAD:sync-branch || echo "No changes to push"
+          }
+
+          # Create a pull request if there are changes
+          if [[ $(git rev-parse --abbrev-ref HEAD) == "sync-branch" ]]; then
+            gh pr create --base main --head sync-branch --title "Sync files from Repo B" --body "Automated sync of files from Repo B."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
