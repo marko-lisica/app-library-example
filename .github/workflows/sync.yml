@@ -24,9 +24,18 @@ jobs:
           # Loop through each file in the sync config
           IFS=$'\n' # Set the internal field separator to newline
           for file in $files; do
+            echo "Fetching $file from Repo B..."
             # Fetch the file from repo B
-            curl -L -o "synced_files/$file" "https://raw.githubusercontent.com/marko-lisica/app-library-example/refs/heads/main/apps/$file"
+            if curl -L -o "synced_files/$file" "https://raw.githubusercontent.com/marko-lisica/app-library-example/refs/heads/main/apps/$file"; then
+              echo "Successfully fetched $file"
+            else
+              echo "Failed to fetch $file"
+            fi
           done
+
+          # List the files that were fetched
+          echo "Files fetched:"
+          ls -l synced_files/
 
       - name: Compare and Commit Changes
         run: |
