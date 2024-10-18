@@ -1,5 +1,5 @@
 url: https://github.com/organinzation/repository/apps/AdobeAcrobatReaderInstallerFull-24_002_20687.pkg
-version: 24.003.20112
+version: 25.003.20112
 self_service: false
 install_script: 
   script: |
